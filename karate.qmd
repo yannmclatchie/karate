@@ -1,0 +1,216 @@
+---
+title: "Bayesian community detection"
+subtitle: "Random graphs and network statistics"
+description: | 
+  A presentation on the Bayesian treatment of community detection
+thanks: \url{https://github.com/yannmclatchie/karate}
+author:
+  - name: Yann McLatchie
+    institute: "Department of computer science, Aalto University"
+    url: https://yannmclatchie.github.io/
+    affiliation: Department of Computer Science, Aalto University
+citation:
+  url: https://github.com/yannmclatchie/karate
+
+format: beamer
+editor: visual
+bibliography: community.bib
+---
+
+## Community detection
+
+Suppose we observe an adjacency matrix $A = (A_{ij})$ of a graph, and task to infer the community memberships of each node $(z_i),\,i=1,\dots,n$. One way to do this is to model the structure of the graph, and specifically model $A \overset{d}=\text{SBM}(z, P)$ with the link probability matrix $P$ also unobserved.
+
+## Aim
+
+We want to produce a Bayesian estimator (hopefully consistent) of the community structure for an SBM given a fixed number of communities.
+
+## Consistency
+
+An estimator $\bar{X}_n$ of a random variable $X$ is deemed _consistent_ if it converges in probability to the true value of the variable $X^\ast$,
+$$
+\lim_{n\to\infty}\mathbb{P}(|\bar{X}_n - X^\ast|>\epsilon) = 0,\,\forall\epsilon>0.
+$$
+
+An estimator $\bar{X}_n$ of a random variable $X$ is deemed _strongly consistent_ if it converges _almost surely_ to the true value of the variable $X^\ast$,
+$$
+\mathbb{P}(\lim_{n\to\infty}\bar{X}_n = X^\ast) = 1.
+$$
+
+## Community structure in the SBM
+
+We have an undirected random graph $G$ on $n$ nodes, each belonging to one of $K\in\mathbb{N}$ classes. Each node is randomly labelled according to i.i.d. $Z_1,\dots,Z_n$ random variables with probability $\pi_1,\dots,\pi_K$. Given this set of labels, edges between nodes are independently sampled from a Bernoulli random variable dependent on the label, $\mathbb{P}(A_{ij} = 1 \mid Z) = P_{Z_i,Z_j}$. 
+
+The likelihood of our SBM is then defined as
+$$
+\prod_{1\leq i < j\leq n}P_{Z_i,Z_j}^{A_{ij}}(1 - P_{Z_i,Z_j})^{1 - A_{ij}}\prod_{1\leq i\leq n}\pi_{Z_i}.
+$$
+
+## Bayesian inference
+
+What is Bayesian inference?
+Why Bayesian inference?
+
+## Prior choices
+
+$$
+\begin{aligned}
+\pi&\sim\textsf{Dirichlet}(\alpha,\dots,\alpha) \\
+P_{i,j}&\overset{\text{i.i.d.}}\sim\textsf{Beta}(\beta_1, \beta_2) \\
+e_i\mid\pi, P&\sim\pi\\
+A_{ij}\mid\pi, P, e&\sim\textsf{Bernoulli}(P_{e_i, e_j})
+\end{aligned}
+$$
+(Hyper-priors over $\alpha, \beta_1, \beta_2$ also available, and not very sensitive, can use for instance $\alpha = 0.5$ and $\beta_1 = \beta_2 = 0.5$).
+
+## The posterior
+
+@vdpas2018 call the posterior class distribution $p(e\mid A)$ the _Bayesian modularity_, denoted $Q_B(e)$, and we then assign class labels according to
+$$
+\hat{e} = \arg\max_e Q_B(e).
+$$
+A classification $\hat{e}$ is said to be weakly consistent if the fraction of misclassified nodes tends to zero, and strongly consistent if the probability of misclassifying any of the nodes
+tends to zero in the limit of the number of nodes [@vdpas2018]. 
+
+## The main result
+
+\begin{theorem}
+  Denote $\rho_n = \sum_{i,j}\pi_i\pi_jP_{i, j}$, then:
+  
+  1. If $(P, \pi)$ is fixed and identifiable then the MAP estimator $\hat{e}$ is strongly consistent;
+  
+  2. If $P = \rho_nS$ with $(S, \pi)$ is fixed and identifiable then the MAP estimator $\hat{e}$ is strongly consistent if $(n-1)\rho_n \gg (\log n)^2$, where $\mathbb{E}[\text{deg}_G(i)] = (n-1)\rho_n$.
+\end{theorem}
+
+## An application in Stan: Zachary's karate club
+
+```{r}
+#| echo: false
+#| fig-cap: "The karate club graph"
+#| label: "fig-karate"
+#| fig-width: 2.5
+#| fig-asp: 1
+
+library(igraph)
+library(ggplot2)
+
+# set a seed for reproducibility
+set.seed(210426)
+
+# read the karate graph
+karate <- make_graph("Zachary")
+
+# plot the karate club graph
+par(mar=c(0,0,0,0)+.1)
+plot(karate, layout = layout_in_circle) 
+```
+
+## The model in Stan
+
+This code is adapted from @Sarkar2018.
+```
+model {
+  for(i in 1:K){
+    for(j in 1:K){
+      // prior over kernel matrix
+      phi[i][j] ~ beta(beta[1], beta[2]);
+    }
+  }
+  // prior over mixture distribution
+  pi ~ dirichlet(alpha);
+  for(i in 1:N){
+    for(j in i+1:N){ //symmetry and ignore diagonals
+      // likelihood
+      graph[i][j] ~ bernoulli(pi' * phi * pi); 
+    }
+  }
+}
+```
+
+## Fitting the model
+
+```{r}
+#| output: false
+#| warning: false
+
+# convert the graph into an adjacency matrix
+adj <- as_adj(karate, sparse = FALSE)
+
+# define model data
+data <- list(
+  N = vcount(karate), 
+  K = 2, 
+  beta = c(0.5, 0.5), 
+  alpha = rep(1 / 2, 2), 
+  graph = adj
+)
+
+# fit Bayesian SBM model in Stan
+model <- rstan::stan_model(file = "sbm.stan")
+fit <- rstan::sampling(model, data = data, seed = 170899)
+```
+
+```{r}
+#| echo: false
+#| fig-cap: "Posterior parameters"
+#| label: "fig-posterior"
+#| fig-width: 2.5
+#| fig-asp: 1
+
+bayesplot::mcmc_areas(
+  fit, 
+  pars = c("phi[1,1]", "phi[1,2]", "phi[2,1]", "phi[2,2]", "pi[1]", "pi[2]")
+)
+```
+
+## Prediction
+
+```{r}
+#| echo: false
+#| fig-cap: "Cluster predictions."
+#| label: "fig-prediction"
+#| fig-width: 2.5
+#| fig-asp: 1
+
+# extract community membership
+fit_ss <- rstan::extract(fit, permuted = TRUE)
+membership <- apply(fit_ss$clusters_inf, 2, median)
+communities <- list("1" = which(membership == 1), "2" = which(membership == 2))
+shapes <- ifelse(membership == 1, "circle", "square")
+colours <- ifelse(membership == 1, "lightyellow", "lightgreen")
+
+# define true memberships
+true_membership <- c(1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 2, 2, 1, 1, 
+                     2, 1, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2)
+true_communities <- list(
+  "1" = which(true_membership == 1), 
+  "2" = which(true_membership == 2)
+)
+
+# plot clusters
+par(mar=c(0,0,0,0)+.1)
+plot(karate, 
+     mark.groups = true_communities,
+     vertex.shape = shapes,
+     vertex.color = colours)
+```
+
+## Prior and likelihood sensitivity
+
+```{r}
+#| echo: false
+#| fig-cap: "Prior and likelihood sensitivity of posterior."
+#| label: "fig-priorsense"
+#| fig-height: 2.5
+
+# prior sensitivity
+pss <- priorsense::powerscale_sequence(fit)
+priorsense::powerscale_plot_ecdf(
+  pss, 
+  variables = c(
+    "phi[1,1]", "phi[1,2]", "phi[2,1]", "phi[2,2]", "pi[1]", "pi[2]"
+  )
+) + theme_classic() + theme(title = element_blank())
+```
+
+## References
