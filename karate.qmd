@@ -94,17 +94,17 @@ As such, we classify nodes into community based on the maximum _a posteriori_ (M
 
 ## How much data is enough data?
 
-Weakly consistent community detection for a given number of classes is possible under the assumption $(n-1)\rho_n\gg\log n$ [@lei2015], and the likelihood modularity is strongly consistent in the case $K=2$.
+$(n-1)\rho_n\gg\log n$ is sufficient for weakly consistent community detection [@lei2015].
 
-Strong consistency of the likelihood modularity for arbitrary $K$ was claimed by @bickel2009 to hold under $(n-1)\rho_n\gg\log n$. **However**, this was shown under the assumption that the modularity is globally Lipschitz.
+@bickel2009 claim the likelihood modularity is strongly consistent for arbitrary $K$ under $(n-1)\rho_n\gg\log n$. **However**, this was shown under the assumption that the modularity is globally Lipschitz, which is not the case in general.
 
-Since this is not the case in general, it is unclear if $(n-1)\rho_n\gg\log n$ is sufficient for strong consistency. However, it is known that $(n-1)\rho_n\gg(\log n)^2$ is sufficient for the likelihood (and thus also the Bayesian) modularity to be strongly consistent.
+$(n-1)\rho_n\gg(\log n)^2$ is sufficient for the likelihood (and thus also the Bayesian) modularity to be strongly consistent for arbitrary $K$. In the special case $K=2$, $(n-1)\rho_n\gg\log n$ is also sufficient.
 
 ## An application in Stan: Zachary's karate club
 
 ```{r}
 #| echo: false
-#| fig-cap: "The karate club graph"
+#| fig-cap: "The karate club graph, with empirical average degree ~4.6 and log(n) ~3.5."
 #| label: "fig-karate"
 #| fig-width: 2.5
 #| fig-asp: 1
