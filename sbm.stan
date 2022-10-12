@@ -18,23 +18,23 @@ parameters{
 model {
   for(i in 1:K){
     for(j in 1:K){
-      phi[i][j] ~ beta(beta[1], beta[2]); //prior on block matrix entries
+      phi[i][j] ~ beta(beta[1], beta[2]); // prior on block matrix entries
     }
   }
 
-  pi ~ dirichlet(alpha); //mixture distribution
+  pi ~ dirichlet(alpha); // mixture distribution
 
   for(i in 1:N){
-    for(j in i+1:N){ //symmetry and ignore diagonals
+    for(j in i+1:N){ // symmetry and ignore diagonals
 
-      //marginalize out clusters
-      graph[i][j] ~ bernoulli(pi' * phi * pi); //sum over pairs <-- Doesn't seem correct! What about p(0|..) case?
+      // likelihood
+      graph[i][j] ~ bernoulli(pi' * phi * pi); 
     }
   }
 }
 
 generated quantities{
-  //likelihood
+  // log-likelihood
   real log_lik = 0.0;
 
   matrix[N,K] log_zprob; //cluster probability of each node
@@ -52,7 +52,7 @@ generated quantities{
   // clusters
   for(i in 1:N){
 
-    clusters_inf[i] = 1; //initialization
+    clusters_inf[i] = 1;
     for(z_i in 1:K){
       log_zprob[i][z_i] = log(pi[z_i]);
 

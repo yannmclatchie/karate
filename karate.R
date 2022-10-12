@@ -1,6 +1,6 @@
-setwd("~/Desktop/karate")
-
+# load libraries
 library(igraph)
+library(ggplot2)
 
 # read the karate graph
 karate <- make_graph("Zachary")
@@ -56,4 +56,4 @@ priorsense::powerscale_plot_ecdf(
   variables = c(
     "phi[1,1]", "phi[1,2]", "phi[2,1]", "phi[2,2]", "pi[1]", "pi[2]"
   )
-)
+) + theme_classic() + theme(title = element_blank())

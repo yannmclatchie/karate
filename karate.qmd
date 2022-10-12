@@ -23,16 +23,16 @@ Suppose we observe an adjacency matrix $A = (A_{ij})$ of a graph, and task to in
 
 ## Aim
 
-We want to produce a Bayesian estimator (hopefully consistent) of the community structure for an SBM given a fixed number of communities.
+@vdpas2018 task to produce a consistent Bayesian estimator of the community structure for an SBM given a fixed number of communities.
 
 ## Consistency
 
-An estimator $\bar{X}_n$ of a random variable $X$ is deemed _consistent_ if it converges in probability to the true value of the variable $X^\ast$,
+An estimator $\bar{X}_n$ of a random variable $X$ is deemed _weakly consistent_ (partial recovery) if it converges _in probability_ to the true value of the variable $X^\ast$,
 $$
 \lim_{n\to\infty}\mathbb{P}(|\bar{X}_n - X^\ast|>\epsilon) = 0,\,\forall\epsilon>0.
 $$
 
-An estimator $\bar{X}_n$ of a random variable $X$ is deemed _strongly consistent_ if it converges _almost surely_ to the true value of the variable $X^\ast$,
+An estimator $\bar{X}_n$ of a random variable $X$ is deemed _strongly consistent_ (exact recovery) if it converges _almost surely_ to the true value of the variable $X^\ast$,
 $$
 \mathbb{P}(\lim_{n\to\infty}\bar{X}_n = X^\ast) = 1.
 $$
@@ -48,8 +48,10 @@ $$
 
 ## Bayesian inference
 
-What is Bayesian inference?
-Why Bayesian inference?
+We wish to infer parameter $\theta \in \Theta$ over which we have prior information $p(\theta)$. We achieve a \textit{posterior} belief $p(\theta \mid x_{1:n})$ by combining our prior with a likelihood $p(x_{1:n} \mid \theta)$ and by performing the belief update [@bernardo2009bayesian].
+$$
+p(\theta \mid x_{1:n}) \propto p(x_{1:n} \mid \theta) p(\theta).
+$$
 
 ## Prior choices
 
@@ -69,18 +71,34 @@ $$
 $$
 \hat{e} = \arg\max_e Q_B(e).
 $$
-A classification $\hat{e}$ is said to be weakly consistent if the fraction of misclassified nodes tends to zero, and strongly consistent if the probability of misclassifying any of the nodes
-tends to zero in the limit of the number of nodes [@vdpas2018]. 
+As such, we classify nodes into community based on the maximum _a posteriori_ (MAP) estimate of $e$. The Bayesian modularity is connected to the _likelihood modularity_ of @bickel2009, in that the latter exists as a special case of the former.
+
+## Why be Bayesian?
+
+- Computationally efficiency of Gibbs sampler compared to maximum likelihood for large $n$
+- Complete posterior predictive distribution
+  - Uncertainty quantification
+  - Decision analysis
+- Ability to encode prior beliefs
+- "A Bayesian version will usually make things better." [@gelmanquotes]
 
 ## The main result
 
 \begin{theorem}
   Denote $\rho_n = \sum_{i,j}\pi_i\pi_jP_{i, j}$, then:
   
-  1. If $(P, \pi)$ is fixed and identifiable then the MAP estimator $\hat{e}$ is strongly consistent;
+  1. if $(P, \pi)$ is fixed and identifiable ($\pi$ has strictly positive coordinates, and rows of $P$ are distinct) then the MAP estimator $\hat{e}$ is strongly consistent;
   
-  2. If $P = \rho_nS$ with $(S, \pi)$ is fixed and identifiable then the MAP estimator $\hat{e}$ is strongly consistent if $(n-1)\rho_n \gg (\log n)^2$, where $\mathbb{E}[\text{deg}_G(i)] = (n-1)\rho_n$.
+  2. if $P = \rho_nS$ with $(S, \pi)$ is fixed and identifiable then the MAP estimator $\hat{e}$ is strongly consistent if $(n-1)\rho_n \gg (\log n)^2$, where $\mathbb{E}[\text{deg}_G(i)] = (n-1)\rho_n$.
 \end{theorem}
+
+## How much data is enough data?
+
+Weakly consistent community detection for a given number of classes is possible under the assumption $(n-1)\rho_n\gg\log n$ [@lei2015], and the likelihood modularity is strongly consistent in the case $K=2$.
+
+Strong consistency of the likelihood modularity for arbitrary $K$ was claimed by @bickel2009 to hold under $(n-1)\rho_n\gg\log n$. **However**, this was shown under the assumption that the modularity is globally Lipschitz.
+
+Since this is not the case in general, it is unclear if $(n-1)\rho_n\gg\log n$ is sufficient for strong consistency. However, it is known that $(n-1)\rho_n\gg(\log n)^2$ is sufficient for the likelihood (and thus also the Bayesian) modularity to be strongly consistent.
 
 ## An application in Stan: Zachary's karate club
 
@@ -116,7 +134,7 @@ model {
       phi[i][j] ~ beta(beta[1], beta[2]);
     }
   }
-  // prior over mixture distribution
+  // prior over community distribution
   pi ~ dirichlet(alpha);
   for(i in 1:N){
     for(j in i+1:N){ //symmetry and ignore diagonals
@@ -127,7 +145,7 @@ model {
 }
 ```
 
-## Fitting the model
+## The fitted model 
 
 ```{r}
 #| output: false
@@ -152,7 +170,7 @@ fit <- rstan::sampling(model, data = data, seed = 170899)
 
 ```{r}
 #| echo: false
-#| fig-cap: "Posterior parameters"
+#| fig-cap: "Posterior SBM parameters."
 #| label: "fig-posterior"
 #| fig-width: 2.5
 #| fig-asp: 1
@@ -163,11 +181,34 @@ bayesplot::mcmc_areas(
 )
 ```
 
+## Decision analysis
+
+
+```{r}
+#| echo: false
+#| fig-cap: "Posterior predictive distribution over six individual node communities."
+#| label: "fig-posterior-predictive"
+#| fig-width: 2.5
+#| fig-asp: 1
+
+bayesplot::mcmc_areas(
+  fit, 
+  pars = c(
+    "clusters_inf[1]", 
+    "clusters_inf[2]", 
+    "clusters_inf[3]", 
+    "clusters_inf[4]", 
+    "clusters_inf[5]",
+    "clusters_inf[6]"
+  )
+)
+```
+
 ## Prediction
 
 ```{r}
 #| echo: false
-#| fig-cap: "Cluster predictions."
+#| fig-cap: "MAP cluster predictions from the Bayesian modularity. Shape and colour of node show predicted class, while coloured clouds indicate true communities."
 #| label: "fig-prediction"
 #| fig-width: 2.5
 #| fig-asp: 1
@@ -201,7 +242,8 @@ plot(karate,
 #| echo: false
 #| fig-cap: "Prior and likelihood sensitivity of posterior."
 #| label: "fig-priorsense"
-#| fig-height: 2.5
+#| fig-height: 3
+#| fig-width: 7.5
 
 # prior sensitivity
 pss <- priorsense::powerscale_sequence(fit)
@@ -213,4 +255,4 @@ priorsense::powerscale_plot_ecdf(
 ) + theme_classic() + theme(title = element_blank())
 ```
 
-## References
+## References {.allowframebreaks}
