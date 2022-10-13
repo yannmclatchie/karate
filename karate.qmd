@@ -17,13 +17,13 @@ editor: visual
 bibliography: community.bib
 ---
 
-## Community detection
-
-Suppose we observe an adjacency matrix $A = (A_{ij})$ of a graph, and task to infer the community memberships of each node $(z_i),\,i=1,\dots,n$. One way to do this is to model the structure of the graph, and specifically model $A \overset{d}=\text{SBM}(z, P)$ with the link probability matrix $P$ also unobserved.
-
 ## Aim
 
 @vdpas2018 task to produce a consistent Bayesian estimator of the community structure for an SBM given a fixed number of communities.
+
+## Community detection
+
+Suppose we observe an adjacency matrix $A = (A_{ij})$ of a graph, and task to infer the community memberships of each node $(z_i),\,i=1,\dots,n$. One way to do this is to model the structure of the graph, and specifically model $A \overset{d}=\text{SBM}(z, P)$ with the link probability matrix $P$ also unobserved.
 
 ## Consistency
 
@@ -48,7 +48,7 @@ $$
 
 ## Bayesian inference
 
-We wish to infer parameter $\theta \in \Theta$ over which we have prior information $p(\theta)$. We achieve a \textit{posterior} belief $p(\theta \mid x_{1:n})$ by combining our prior with a likelihood $p(x_{1:n} \mid \theta)$ and by performing the belief update [@bernardo2009bayesian].
+We wish to infer parameter $\theta \in \Theta$ over which we have prior information $p(\theta)$. We achieve a \textit{posterior} belief $p(\theta \mid x_{1:n})$ by combining our prior with a likelihood $p(x_{1:n} \mid \theta)$ and by performing the belief update [@bernardo2009bayesian],
 $$
 p(\theta \mid x_{1:n}) \propto p(x_{1:n} \mid \theta) p(\theta).
 $$
@@ -254,5 +254,11 @@ priorsense::powerscale_plot_ecdf(
   )
 ) + theme_classic() + theme(title = element_blank())
 ```
+
+## The moral
+
+1. Bayesian inference affords computationally efficiency, the ability to encode priors, and general posterior decision analysis
+2. The Bayesian modularity is closely related to the likelihood modularity, and both are strongly consistent under $(n-1)\rho_n\gg(\log n)^2$
+3. The karate club results do not reflect a failure of the inference method, rather a combination of small data and potentially misspecified likelihood.
 
 ## References {.allowframebreaks}
